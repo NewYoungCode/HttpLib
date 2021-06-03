@@ -48,13 +48,13 @@ namespace HttpLib {
 			ptr->Temp.clear();
 			return buf.size();
 		}
-		char* buf2 = new char[_Count];
-		int len = Client.Receive(buf2, _Count);
+
+		std::shared_ptr<char> buf2(new char[_Count]);
+		int len = Client.Receive(buf2.get(), _Count);
 		if (len != -1 && len != 0) {
-			buf.append(buf2, len);
+			buf.append(buf2.get(), len);
 			ptr->ReadCount += len;
 		}
-		delete[] buf2;
 		return len == -1 ? 0 : len;
 	}
 	size_t  Request::ReadStreamToEnd(String& body, size_t _Count)const {
@@ -150,15 +150,16 @@ namespace HttpLib {
 	bool Server::ReceiveHeader(Request& rq) {
 		bool ok = false;
 		bool EndHead = false;
-		char* buf = new char[UpSize] {0};
+
+		std::shared_ptr<char> buf(new char[UpSize] {0});
 		for (;;) {
-			int len = rq.Client.Receive(buf, UpSize);
+			int len = rq.Client.Receive(buf.get(), UpSize);
 			if (len == -1 || len == 0) {
 				printf("%s连接断开!\n", rq.Client.Address.c_str());
 				break;
 			}
 			if (rq.Header.empty()) {
-				String tempStr = buf;
+				String tempStr = buf.get();
 				size_t pos1 = tempStr.find("POST /");
 				size_t pos2 = tempStr.find("GET /");
 				//这里确定是否为http协议
@@ -174,10 +175,10 @@ namespace HttpLib {
 					printf("Maximum limit exceeded 2048 byte !\n");
 					break;
 				}
-				rq.Header.append(buf, len);
+				rq.Header.append(buf.get(), len);
 			}
 			else {
-				rq.Temp.append(buf, len);
+				rq.Temp.append(buf.get(), len);
 			}
 			rq.HeadPos = rq.Header.find("\r\n\r\n");
 			if (!EndHead && rq.HeadPos != String::npos) {
@@ -204,7 +205,7 @@ namespace HttpLib {
 				for (auto kv = vstr.begin() + 1; vstr.size() >= 2 && kv != vstr.end(); kv++)
 				{
 					size_t mhPos = (*kv).find(":");
-					rq.Headers.insert(std::pair<String, String>((*kv).substr(0, mhPos), (*kv).substr(mhPos + 2)));
+					rq.Headers.emplace(std::pair<String, String>((*kv).substr(0, mhPos), (*kv).substr(mhPos + 2)));
 				}
 
 				//如果是POST方法取出content长度继续接收
@@ -227,7 +228,6 @@ namespace HttpLib {
 				break;
 			}
 		}
-		delete[] buf;
 		return ok;
 	}
 	void Server::Receive(const Socket& client) {
@@ -367,18 +367,18 @@ namespace HttpLib {
 		else {
 			if (rp.Status != 304) { //如果不使用 缓存
 				//普通响应文件
-				char* buf2 = new char[DownSize] {0};
+
+				std::shared_ptr<char> buf2(new char[DownSize] {0});
 				size_t ct = 0;
 				//读取文件
-				while ((ct = rp.fileinfo->Read(buf2, DownSize)) > 0)
+				while ((ct = rp.fileinfo->Read(buf2.get(), DownSize)) > 0)
 				{
 					//发送内存块
-					if (ct != rq.Client.Write(buf2, ct)) {
+					if (ct != rq.Client.Write(buf2.get(), ct)) {
 						printf("文件传输失败!\n");
 						break;
 					}
 				}
-				delete[] buf2;
 			}
 		}
 	}

@@ -5,7 +5,7 @@ int main()
 	Server server;
 	std::printf("base dir at [%s]\n started !", server.WebRoot.c_str());
 
-	server.WebRoot = "D:\\WebRoot";//设置前端目录
+	//server.WebRoot = "D:\\WebRoot";//设置前端目录
 
 	server.Get("/", [=](const Request& rq, Response& rp) {
 		//重定向

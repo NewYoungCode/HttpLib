@@ -4,18 +4,18 @@
 #include <map>
 #include <vector>
 #include <regex>
+#include <memory>
 
 #include "Socket.hpp"
 #include "String.hpp"
 #include "FileSystem.hpp"
 #include "ThreadPool.hpp"
 
-
 namespace HttpLib {
 	//ºöÂÔ¿ØÖÆÌ¨Êä³ö
 	template<class ...Args>
 	void printf(const char* str, Args... args) {
-		//std::printf(str, std::forward<Args>(args)...);
+		std::printf(str, std::forward<Args>(args)...);
 	}
 #define GET 0
 #define POST 1
