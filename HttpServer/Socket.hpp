@@ -2,6 +2,7 @@
 #include <vector>
 #include<iostream>
 #include <string>
+#include <memory>
 
 #ifdef _WIN32
 #include <winsock.h>
@@ -35,8 +36,8 @@ public:
 		::WSACleanup();
 		__wsadata__.wVersion = 0;
 	}
-	static std::vector<std::string> GetIpByName(const std::string& hostname) {
-		std::vector<std::string> ipList;
+	static std::shared_ptr<std::vector<std::string>> GetIpByName(const std::string& hostname) {
+		std::shared_ptr<std::vector<std::string>> ipList(new std::vector<std::string>);
 		char           szHostname[100];
 		HOSTENT* pHostEnt;
 		int             nAdapter = 0;
@@ -46,7 +47,7 @@ public:
 		for (int i = 0; host && host->h_addr_list[i]; i++)
 		{
 			char* ip = inet_ntoa(*(struct in_addr*)host->h_addr_list[i]);
-			ipList.push_back(ip);
+			ipList->emplace_back(ip);
 		}
 		return ipList;
 	}
@@ -57,7 +58,7 @@ public:
 	bool Connect(const std::string& ip, size_t port);
 	bool Bind(const std::string& ip, size_t port);
 	bool Listen(int backlog = 0);
-	Socket Accep() const;
+	std::shared_ptr<Socket> Accep() const;
 	int Write(const char* buff, int size)const;
 	void Close() const;
 	Socket(NetWorkType type = NetWorkType::TCP);
@@ -126,26 +127,25 @@ inline bool Socket::Bind(const std::string& ip, size_t port) {
 inline bool Socket::Listen(int backlog) {
 	return !::listen(socket, backlog);
 }
-inline Socket Socket::Accep() const {
+inline std::shared_ptr<Socket> Socket::Accep() const {
 	for (;;) {
 		sockaddr_in  ClientAddr;
 		int  AddrLen = sizeof(ClientAddr);
 		SOCKET clientSocket = accept(socket, (LPSOCKADDR)&ClientAddr, &AddrLen);
 		if (clientSocket == INVALID_SOCKET)
 		{
-			continue;
+			printf("INVALID_SOCKET\n");
+			return std::shared_ptr<Socket>(NULL);
 		}
-		Socket s(clientSocket);
-		s.Port = ClientAddr.sin_port;
-
-		s.WorkType = WorkType;
-
+		std::shared_ptr<Socket> skt(new Socket(clientSocket));
+		skt->Port = ClientAddr.sin_port;
+		skt->WorkType = WorkType;
 		char* c_address = new char[15]{ 0 };
 		sprintf_s(c_address, 15, "%d.%d.%d.%d", ClientAddr.sin_addr.S_un.S_un_b.s_b1, ClientAddr.sin_addr.S_un.S_un_b.s_b2, ClientAddr.sin_addr.S_un.S_un_b.s_b3, ClientAddr.sin_addr.S_un.S_un_b.s_b4);
-		s.Address = c_address;
+		skt->Address = c_address;
 		delete[] c_address;
 
-		return s;
+		return skt;
 	}
 	return NULL;
 }

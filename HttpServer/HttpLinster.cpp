@@ -50,7 +50,7 @@ namespace HttpLib {
 		}
 
 		std::shared_ptr<char> buf2(new char[_Count]);
-		int len = Client.Receive(buf2.get(), _Count);
+		int len = Client->Receive(buf2.get(), _Count);
 		if (len != -1 && len != 0) {
 			buf.append(buf2.get(), len);
 			ptr->ReadCount += len;
@@ -143,7 +143,8 @@ namespace HttpLib {
 			//单任务
 			//Receive(s.Accep());
 			//多任务
-			threadPool->enqueue(&Server::Receive, this, s.Accep());
+			auto client = s.Accep();
+			threadPool->enqueue(&Server::Receive, this, *client);
 		}
 		return b;
 	}
@@ -153,9 +154,9 @@ namespace HttpLib {
 
 		std::shared_ptr<char> buf(new char[UpSize] {0});
 		for (;;) {
-			int len = rq.Client.Receive(buf.get(), UpSize);
+			int len = rq.Client->Receive(buf.get(), UpSize);
 			if (len == -1 || len == 0) {
-				printf("%s连接断开!\n", rq.Client.Address.c_str());
+				printf("%s连接断开!\n", rq.Client->Address.c_str());
 				break;
 			}
 			if (rq.Header.empty()) {
@@ -230,11 +231,16 @@ namespace HttpLib {
 		}
 		return ok;
 	}
-	void Server::Receive(const Socket& client) {
+	void Server::Receive(const Socket client) {
 		printf("%s:%d\n", client.Address.c_str(), client.Port);
-		Request rq;
-		Response rp;
-		rq.Client = client;
+
+		std::shared_ptr<Request> auto_req(new Request);
+		std::shared_ptr<Response> auto_resp(new Response);
+
+		Request &rq=*auto_req;
+		Response &rp=*auto_resp;
+
+		rq.Client =std::shared_ptr<Socket>(new Socket(client));
 		//接收请求头
 		if (!ReceiveHeader(rq)) {
 			printf("Termination of receiving, abnormal message\n");
@@ -256,11 +262,11 @@ namespace HttpLib {
 		if (rq.GetHeader("Connection", keep_alive) && keep_alive == "keep-alive") {
 			printf("keep-alive\n");
 			//继续接收数据
-			threadPool->enqueue(&Server::Receive, this, rq.Client);
+			threadPool->enqueue(&Server::Receive, this, *(rq.Client));
 		}
 		else {
 			printf("Connection close\n");
-			rq.Client.Close();
+			rq.Client->Close();
 		}
 	}
 	HttpHandler* Server::HandleUrl(Request& rq, Response& rp) {
@@ -356,12 +362,12 @@ namespace HttpLib {
 		}
 		header.append("\r\n");
 		printf("---------------------------------------------------\n%s\n", header.c_str());//输出响应头部
-		rq.Client.Write(header.c_str(), header.size());//发送响应头部
+		rq.Client->Write(header.c_str(), header.size());//发送响应头部
 	}
 	void Server::ResponseBody(Request& rq, Response& rp) {
 		if (!rp.fileinfo) {
 			if (rp.Body.size() != 0) {
-				rq.Client.Write(rp.Body.c_str(), rp.Body.size());//普通响应body
+				rq.Client->Write(rp.Body.c_str(), rp.Body.size());//普通响应body
 			}
 		}
 		else {
@@ -374,7 +380,7 @@ namespace HttpLib {
 				while ((ct = rp.fileinfo->Read(buf2.get(), DownSize)) > 0)
 				{
 					//发送内存块
-					if (ct != rq.Client.Write(buf2.get(), ct)) {
+					if (ct != rq.Client->Write(buf2.get(), ct)) {
 						printf("文件传输失败!\n");
 						break;
 					}

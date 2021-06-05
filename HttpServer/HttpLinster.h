@@ -15,7 +15,7 @@ namespace HttpLib {
 	//忽略控制台输出
 	template<class ...Args>
 	void printf(const char* str, Args... args) {
-		std::printf(str, std::forward<Args>(args)...);
+		//std::printf(str, std::forward<Args>(args)...);
 	}
 #define GET 0
 #define POST 1
@@ -41,7 +41,7 @@ namespace HttpLib {
 		std::vector<Form> Forms;
 		std::map<String, String> Headers;
 		char Method = GET;
-		Socket Client;
+		std::shared_ptr<Socket> Client;
 		size_t ContentLength = 0;
 		String ParamString;
 		//获取URL中带的值
@@ -99,7 +99,7 @@ namespace HttpLib {
 		bool RegexValue(const String& content, const String& regex, String& result);
 		bool ReceiveHeader(Request& rq);
 		HttpHandler* HandleUrl(Request& rq, Response& rp);
-		void Receive(const Socket& client);
+		void Receive(const Socket client);
 	};
 }
 
