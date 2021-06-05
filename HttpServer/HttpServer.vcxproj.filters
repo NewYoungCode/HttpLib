@@ -39,4 +39,7 @@
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Release\Release_x86_test.zip" />
+  </ItemGroup>
 </Project>
